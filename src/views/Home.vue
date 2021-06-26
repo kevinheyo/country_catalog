@@ -1,5 +1,7 @@
 <template>
   <div class="home">
+    <el-input placeholder="Keyword" v-model="keyword" @input="handleKeywordChange"></el-input>
+
     <el-pagination layout="total,prev,pager,next,jumper" :total="pager.total" :page-count="pager.pageCount" background
                    :page-size="pager.pageSize" :current-page="pager.currentPage" @current-change="handleCurrentChange"></el-pagination>
 
@@ -75,6 +77,8 @@ export default {
         all: 'https://restcountries.eu/rest/v2/all',
       },
 
+      keyword: '',
+
       countries: [],
       records: [],
     }
@@ -84,8 +88,15 @@ export default {
     updateRecords () {
       const vm = this
       let countries = vm.countries;
+      let filteredRecords = countries;
 
-      let filteredRecords = countries.sort((a, b) => {
+      if (vm.keyword !== '') {
+        filteredRecords = filteredRecords.filter((o) => {
+          return o.name.includes(vm.keyword);
+        });
+      }
+
+      filteredRecords = filteredRecords.sort((a, b) => {
         if (a[vm.order.prop] < b[vm.order.prop]) {
           return (vm.order.order === 'ascending') ? -1 : 1;
         }
@@ -107,6 +118,11 @@ export default {
       const end = start + vm.pager.pageSize + 1;
 
       vm.records = filteredRecords.slice(start, end);
+    },
+
+    handleKeywordChange() {
+      const vm = this
+      vm.updateRecords();
     },
 
     handleSortChange (column) {
