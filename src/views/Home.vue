@@ -1,7 +1,7 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-<!--    <HelloWorld msg="Welcome to Your Vue.js App"/>-->
+    <el-pagination layout="total,prev,pager,next,jumper" :total="pager.total" :page-count="pager.pageCount" background
+                   :page-size="pager.pageSize" :current-page="pager.currentPage" @current-change="handleCurrentChange"></el-pagination>
 
     <el-table :data="records" style="width: 100%" border stripe fit size="mini" @sort-change="handleSortChange" :default-sort="defaultSort" v-loading="loading">
       <el-table-column prop="flag" label="國旗">
@@ -38,33 +38,36 @@ export default {
         fields: vm.fields
       }
     }).then(function (response) {
-      // handle success
       console.log(response);
       vm.countries = response.data;
-    })
-        .catch(function (error) {
-          // handle error
-          console.log(error)
-        })
-        .then(function () {
-          // always executed
-        })
-
+      vm.$nextTick(() => {
+        vm.updateRecords();
+      });
+    }).catch(function (error) {
+      console.error(error)
+    });
   },
 
-  data() {
+  data () {
     return {
       loading: false,
 
       defaultSort: {
-        'prop': 'name',
-        'order': 'ascending'
+        prop: 'name',
+        order: 'ascending'
       },
       order: {
-        'prop': 'name',
-        'order': 'ascending'
+        prop: 'name',
+        order: 'ascending'
       },
       sortOrders: ['ascending', 'descending'],
+
+      pager: {
+        total: 0,
+        pageCount: 0,
+        pageSize: 25,
+        currentPage: 1
+      },
 
       fields: 'flag;name;alpha2Code;alpha3Code;nativeName;altSpellings;callingCodes',
 
@@ -72,38 +75,59 @@ export default {
         all: 'https://restcountries.eu/rest/v2/all',
       },
 
-      countries: []
-    }
-  },
-
-  computed: {
-    records () {
-      const vm = this
-      // TODO: loading feedback
-      // TODO: Pagination
-      // TODO: Search filtering
-
-      let countries = vm.countries
-      let records = countries.sort((a, b) => {
-        if (a[vm.order.prop] < b[vm.order.prop]) {
-          return (vm.order.order === 'ascending') ? -1 : 1
-        }
-        if (a[vm.order.prop] > b[vm.order.prop]) {
-          return (vm.order.order === 'ascending') ? 1 : -1
-        }
-        return 0
-      })
-
-      return records
+      countries: [],
+      records: [],
     }
   },
 
   methods: {
-    handleSortChange(column) {
-      const vm = this;
-      vm.order.prop = column.prop;
-      vm.order.order = column.order;
+    updateRecords () {
+      const vm = this
+      let countries = vm.countries;
+
+      let filteredRecords = countries.sort((a, b) => {
+        if (a[vm.order.prop] < b[vm.order.prop]) {
+          return (vm.order.order === 'ascending') ? -1 : 1;
+        }
+        if (a[vm.order.prop] > b[vm.order.prop]) {
+          return (vm.order.order === 'ascending') ? 1 : -1;
+        }
+        return 0;
+      });
+
+      // Pagination
+      const total = filteredRecords.length;
+      const pageCount = parseInt(total / vm.pager.pageSize) + 1;
+
+      vm.pager.total = total;
+      vm.pager.pageCount = pageCount;
+
+      // Slice
+      const start = (vm.pager.currentPage - 1) * vm.pager.pageSize;
+      const end = start + vm.pager.pageSize + 1;
+
+      vm.records = filteredRecords.slice(start, end);
     },
+
+    handleSortChange (column) {
+      const vm = this
+      console.log('handleSortChange', column)
+      vm.order.prop = column.prop
+      vm.order.order = column.order
+
+      vm.$nextTick(() => {
+        vm.updateRecords();
+      });
+    },
+
+    handleCurrentChange (v) {
+      const vm = this
+      vm.pager.currentPage = v;
+
+      vm.$nextTick(() => {
+        vm.updateRecords();
+      });
+    }
   }
 }
 </script>
