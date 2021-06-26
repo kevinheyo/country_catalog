@@ -1,6 +1,9 @@
 <template>
   <div class="home">
-    <el-input placeholder="Keyword" v-model="keyword" @input="handleKeywordChange"></el-input>
+    {{ keyword }}
+
+    <el-input placeholder="Keyword" v-model="keyword"></el-input>
+    <el-button type="primary" @click="handleKeywordChange">Primary</el-button>
 
     <el-pagination layout="total,prev,pager,next,jumper" :total="pager.total" :page-count="pager.pageCount" background
                    :page-size="pager.pageSize" :current-page="pager.currentPage" @current-change="handleCurrentChange"></el-pagination>
@@ -8,11 +11,7 @@
     <el-table :data="records" style="width: 100%" border stripe fit size="mini" @sort-change="handleSortChange" :default-sort="defaultSort" v-loading="loading">
       <el-table-column prop="flag" label="國旗">
         <template #default="scope">
-          <el-image
-              style="width: 100px; height: 100px"
-              :src="scope.row.flag"
-              fit="contain">
-          </el-image>
+          <el-image style="width: 100px; height: 100px" :src="scope.row.flag" fit="contain" />
         </template>
       </el-table-column>
       <el-table-column prop="name" label="國家名稱" sortable="custom" :sort-orders="sortOrders" />
@@ -21,12 +20,20 @@
       <el-table-column prop="nativeName" label="母語名稱" sortable="custom" :sort-orders="sortOrders" />
       <el-table-column prop="altSpellings" label="替代國家名稱" sortable="custom" :sort-orders="sortOrders" />
       <el-table-column prop="callingCodes" label="國際電話區號" sortable="custom" :sort-orders="sortOrders" />
+
+      <el-table-column prop="score" label="Fuzziness" width="120" sortable="custom" :sort-orders="sortOrders">
+        <template #default="scope">
+          <span v-if="scope.row.score !== undefined">{{ scope.row.score.toFixed(4) }}</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
     </el-table>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import Fuse from 'fuse.js';
 
 export default {
   name: 'Home',
@@ -42,6 +49,8 @@ export default {
     }).then(function (response) {
       console.log(response);
       vm.countries = response.data;
+      vm.nameList = vm.countries.map(c => c.name);
+
       vm.$nextTick(() => {
         vm.updateRecords();
       });
@@ -81,47 +90,74 @@ export default {
 
       countries: [],
       records: [],
+
+      nameList: [],
+      fuseOptions: {
+        includeScore: true,
+        // isCaseSensitive: true
+      }
     }
   },
 
   methods: {
-    updateRecords () {
+    updateRecords: function () {
       const vm = this
-      let countries = vm.countries;
-      let filteredRecords = countries;
+      let countries = vm.countries
+      let filteredRecords = []
 
+      // Filtering
       if (vm.keyword !== '') {
-        filteredRecords = filteredRecords.filter((o) => {
-          return o.name.includes(vm.keyword);
-        });
+        const fuse = new Fuse(vm.nameList, vm.fuseOptions)
+
+        const result = fuse.search(vm.keyword)
+        const hashTable = {}
+        result.map(r => { hashTable[r.item] = r.score })
+        // console.log('Fuse result', result, hashTable)
+
+        const has = Object.prototype.hasOwnProperty
+        countries.map(o => {
+          if (has.call(hashTable, o.name)) {
+            filteredRecords.push({...o, score: hashTable[o.name]})
+          }
+        })
+        // console.log('filteredRecords', filteredRecords)
+
+      } else {
+        filteredRecords = countries
       }
 
+      // Sorting
       filteredRecords = filteredRecords.sort((a, b) => {
         if (a[vm.order.prop] < b[vm.order.prop]) {
-          return (vm.order.order === 'ascending') ? -1 : 1;
+          return (vm.order.order === 'ascending') ? -1 : 1
         }
         if (a[vm.order.prop] > b[vm.order.prop]) {
-          return (vm.order.order === 'ascending') ? 1 : -1;
+          return (vm.order.order === 'ascending') ? 1 : -1
         }
-        return 0;
-      });
+        return 0
+      })
 
       // Pagination
-      const total = filteredRecords.length;
-      const pageCount = parseInt(total / vm.pager.pageSize) + 1;
+      const total = filteredRecords.length
+      const pageCount = parseInt(total / vm.pager.pageSize) + 1
 
-      vm.pager.total = total;
-      vm.pager.pageCount = pageCount;
+      vm.pager.total = total
+      vm.pager.pageCount = pageCount
 
       // Slice
-      const start = (vm.pager.currentPage - 1) * vm.pager.pageSize;
-      const end = start + vm.pager.pageSize + 1;
+      const start = (vm.pager.currentPage - 1) * vm.pager.pageSize
+      const end = start + vm.pager.pageSize
 
-      vm.records = filteredRecords.slice(start, end);
+      vm.records = filteredRecords.slice(start, end)
     },
 
     handleKeywordChange() {
       const vm = this
+      if (vm.keyword !== '') {
+        vm.order.prop = 'score'
+        vm.order.order = 'ascending'
+      }
+
       vm.updateRecords();
     },
 
@@ -143,6 +179,16 @@ export default {
       vm.$nextTick(() => {
         vm.updateRecords();
       });
+    }
+  },
+
+  watch: {
+    keyword (newVal, oldVal) {
+      console.log('keyword watcher')
+      if (newVal === '' && oldVal !== '') {
+        this.updateRecords();
+        console.log('keyword watcher > updateRecords')
+      }
     }
   }
 }
