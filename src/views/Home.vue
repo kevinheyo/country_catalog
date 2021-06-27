@@ -1,33 +1,55 @@
 <template>
   <div class="home">
-    {{ keyword }}
+    <el-row :gutter="20">
+      <el-col :span="6">
+        <div></div>
+      </el-col>
+      <el-col :span="8">
+        <el-input placeholder="Keyword" v-model="keyword"></el-input>
+      </el-col>
+      <el-col :span="4">
+        <el-button type="primary" @click="handleQuery">搜尋</el-button>
+        <el-button type="danger" @click="handleReset">清除</el-button>
+      </el-col>
+      <el-col :span="6">
+        <div></div>
+      </el-col>
+    </el-row>
 
-    <el-input placeholder="Keyword" v-model="keyword"></el-input>
-    <el-button type="primary" @click="handleKeywordChange">Primary</el-button>
+    <el-row :gutter="20" style="margin: 1.75rem 0">
+      <el-col :span="24">
+        <el-pagination layout="total,prev,pager,next,jumper" background
+                       :total="pager.total" :page-count="pager.pageCount"
+                       :page-size="pager.pageSize" :current-page="pager.currentPage"
+                       @current-change="handleCurrentChange"/>
+      </el-col>
+    </el-row>
 
-    <el-pagination layout="total,prev,pager,next,jumper" :total="pager.total" :page-count="pager.pageCount" background
-                   :page-size="pager.pageSize" :current-page="pager.currentPage" @current-change="handleCurrentChange"></el-pagination>
+    <el-row :gutter="20" style="margin: 1.5rem 0">
+      <el-col :span="24">
+        <el-table id="catalog" :data="records" style="width: 100%" border stripe fit size="mini"
+                  @sort-change="handleSortChange" :default-sort="defaultSort" v-loading="loading">
+          <el-table-column prop="flag" label="國旗" width="86">
+            <template #default="scope">
+              <el-image style="width: 75px; height: 50px" :src="scope.row.flag" fit="contain"/>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="國家名稱" width="150" sortable="custom" :sort-orders="sortOrders"/>
+          <el-table-column prop="alpha2Code" label="2位國家代碼" width="115" sortable="custom" :sort-orders="sortOrders"/>
+          <el-table-column prop="alpha3Code" label="3位國家代碼" width="115" sortable="custom" :sort-orders="sortOrders"/>
+          <el-table-column prop="nativeName" label="母語名稱" width="100" sortable="custom" :sort-orders="sortOrders"/>
+          <el-table-column prop="altSpellings" label="替代國家名稱" sortable="custom" :sort-orders="sortOrders"/>
+          <el-table-column prop="callingCodes" label="國際電話區號" width="120" sortable="custom" :sort-orders="sortOrders"/>
 
-    <el-table :data="records" style="width: 100%" border stripe fit size="mini" @sort-change="handleSortChange" :default-sort="defaultSort" v-loading="loading">
-      <el-table-column prop="flag" label="國旗">
-        <template #default="scope">
-          <el-image style="width: 100px; height: 100px" :src="scope.row.flag" fit="contain" />
-        </template>
-      </el-table-column>
-      <el-table-column prop="name" label="國家名稱" sortable="custom" :sort-orders="sortOrders" />
-      <el-table-column prop="alpha2Code" label="2位國家代碼" sortable="custom" :sort-orders="sortOrders" />
-      <el-table-column prop="alpha3Code" label="3位國家代碼" sortable="custom" :sort-orders="sortOrders" />
-      <el-table-column prop="nativeName" label="母語名稱" sortable="custom" :sort-orders="sortOrders" />
-      <el-table-column prop="altSpellings" label="替代國家名稱" sortable="custom" :sort-orders="sortOrders" />
-      <el-table-column prop="callingCodes" label="國際電話區號" sortable="custom" :sort-orders="sortOrders" />
-
-      <el-table-column prop="score" label="Fuzziness" width="120" sortable="custom" :sort-orders="sortOrders">
-        <template #default="scope">
-          <span v-if="scope.row.score !== undefined">{{ scope.row.score.toFixed(4) }}</span>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
-    </el-table>
+          <el-table-column prop="score" label="Fuzziness" width="105" sortable="custom" :sort-orders="sortOrders">
+            <template #default="scope">
+              <span v-if="scope.row.score !== undefined">{{ scope.row.score.toFixed(4) }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -38,7 +60,7 @@ import Fuse from 'fuse.js';
 export default {
   name: 'Home',
 
-  created () {
+  created() {
     const vm = this;
     console.log('created', vm.url.all, vm.fields);
 
@@ -59,7 +81,7 @@ export default {
     });
   },
 
-  data () {
+  data() {
     return {
       loading: false,
 
@@ -111,7 +133,9 @@ export default {
 
         const result = fuse.search(vm.keyword)
         const hashTable = {}
-        result.map(r => { hashTable[r.item] = r.score })
+        result.map(r => {
+          hashTable[r.item] = r.score
+        })
         // console.log('Fuse result', result, hashTable)
 
         const has = Object.prototype.hasOwnProperty
@@ -151,17 +175,27 @@ export default {
       vm.records = filteredRecords.slice(start, end)
     },
 
-    handleKeywordChange() {
+    handleQuery() {
       const vm = this
       if (vm.keyword !== '') {
         vm.order.prop = 'score'
         vm.order.order = 'ascending'
-      }
+        vm.pager.currentPage = 1
 
-      vm.updateRecords();
+        vm.$nextTick(() => {
+          vm.updateRecords()
+        })
+      }
     },
 
-    handleSortChange (column) {
+    handleReset() {
+      const vm = this
+      vm.keyword = ''
+
+      vm.updateRecords()
+    },
+
+    handleSortChange(column) {
       const vm = this
       console.log('handleSortChange', column)
       vm.order.prop = column.prop
@@ -172,7 +206,7 @@ export default {
       });
     },
 
-    handleCurrentChange (v) {
+    handleCurrentChange(v) {
       const vm = this
       vm.pager.currentPage = v;
 
@@ -183,7 +217,7 @@ export default {
   },
 
   watch: {
-    keyword (newVal, oldVal) {
+    keyword(newVal, oldVal) {
       console.log('keyword watcher')
       if (newVal === '' && oldVal !== '') {
         this.updateRecords();
@@ -193,3 +227,16 @@ export default {
   }
 }
 </script>
+
+
+<style lang="scss">
+#catalog {
+  .el-table__row > td {
+    padding: 3px 0 !important;
+
+    & > .cell {
+      padding: 0 6px !important;
+    }
+  }
+}
+</style>
