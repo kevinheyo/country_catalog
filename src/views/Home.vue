@@ -34,7 +34,13 @@
               <el-image style="width: 75px; height: 50px" :src="scope.row.flag" fit="contain"/>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="國家名稱" width="150" sortable="custom" :sort-orders="sortOrders"/>
+
+          <el-table-column prop="name" label="國家名稱" width="150" sortable="custom" :sort-orders="sortOrders">
+            <template #default="scope">
+              <el-button type="text" @click="handleOpenDialog(scope.row.alpha2Code)">{{ scope.row.name }}</el-button>
+            </template>
+          </el-table-column>
+
           <el-table-column prop="alpha2Code" label="2位國家代碼" width="115" sortable="custom" :sort-orders="sortOrders"/>
           <el-table-column prop="alpha3Code" label="3位國家代碼" width="115" sortable="custom" :sort-orders="sortOrders"/>
           <el-table-column prop="nativeName" label="母語名稱" width="100" sortable="custom" :sort-orders="sortOrders"/>
@@ -50,35 +56,50 @@
         </el-table>
       </el-col>
     </el-row>
+
+
+    <el-dialog title="Tips" v-model="dialog.visible" width="30%">
+      <span>This is a message</span>
+      <p>{{ dialog.visible }}</p>
+      <p>{{ dialog.code }}</p>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handleCLoseDialog">Cancel</el-button>
+          <el-button type="primary" @click="handleCLoseDialog">Confirm</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+
+    <country-dialog />
   </div>
 </template>
 
 <script>
-import axios from 'axios';
+import api from '../api';
 import Fuse from 'fuse.js';
+import {mapMutations} from 'vuex';
+import CountryDialog from "@/components/CountryDialog";
 
 export default {
   name: 'Home',
 
+  components: {
+    CountryDialog
+  },
+
   created() {
     const vm = this;
-    console.log('created', vm.url.all, vm.fields);
 
-    axios.get(vm.url.all, {
-      params: {
-        fields: vm.fields
-      }
-    }).then(function (response) {
-      console.log(response);
-      vm.countries = response.data;
+    const getAll = (countries) => {
+      vm.countries = countries;
       vm.nameList = vm.countries.map(c => c.name);
-
       vm.$nextTick(() => {
         vm.updateRecords();
       });
-    }).catch(function (error) {
-      console.error(error)
-    });
+    }
+
+    api.getAllCountries(getAll);
   },
 
   data() {
@@ -102,16 +123,13 @@ export default {
         currentPage: 1
       },
 
-      fields: 'flag;name;alpha2Code;alpha3Code;nativeName;altSpellings;callingCodes',
-
-      url: {
-        all: 'https://restcountries.eu/rest/v2/all',
-      },
-
       keyword: '',
-
       countries: [],
       records: [],
+
+      dialog: {
+        visible: false
+      },
 
       nameList: [],
       fuseOptions: {
@@ -213,7 +231,23 @@ export default {
       vm.$nextTick(() => {
         vm.updateRecords();
       });
-    }
+    },
+
+    handleOpenDialog(code) {
+      const vm = this
+      console.log('handleOpenDialog', code)
+
+      // vm.dialog.visible = true
+      // vm.dialog.code = code
+
+      vm.showDialog(code)
+    },
+
+    handleCLoseDialog() {
+      const vm = this
+      vm.dialog.visible = false
+    },
+    ...mapMutations(['showDialog'])
   },
 
   watch: {
