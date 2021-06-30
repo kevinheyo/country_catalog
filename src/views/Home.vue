@@ -27,7 +27,7 @@
 
     <el-row :gutter="20" style="margin: 1.5rem 0">
       <el-col :span="24">
-        <el-table id="catalog" :data="records" style="width: 100%" border stripe fit size="mini"
+        <el-table ref="catalog" id="catalog" :data="records" style="width: 100%" border stripe fit size="mini"
                   @sort-change="handleSortChange" :default-sort="defaultSort" v-loading="loading">
           <el-table-column prop="flag" label="國旗" width="86">
             <template #default="scope">
@@ -84,29 +84,31 @@ export default {
   },
 
   created() {
-    const vm = this;
+    const vm = this
 
     const getAll = (countries) => {
       vm.countries = countries;
       vm.nameList = vm.countries.map(c => c.name);
       vm.$nextTick(() => {
-        vm.updateRecords();
+        vm.updateRecords()
       });
     }
 
-    api.getAllCountries(getAll);
+    setTimeout(() => {
+      api.getAllCountries(getAll)
+      vm.loading = false
+    }, 3000)
 
     vm.registerKeyAction()
   },
 
   beforeUnmount() {
-    console.log('beforeUnmount')
     this.unregisteredKeyAction()
   },
 
   data() {
     return {
-      loading: false,
+      loading: true,
 
       defaultSort: {
         prop: 'name',
@@ -196,6 +198,7 @@ export default {
     handleQuery() {
       const vm = this
       if (vm.keyword !== '') {
+        vm.$refs['catalog'].sort('score', 'ascending')
         vm.order.prop = 'score'
         vm.order.order = 'ascending'
         vm.pager.currentPage = 1
@@ -256,7 +259,6 @@ export default {
     registerKeyAction() {
       const vm = this;
       const handler = (e) => {
-        console.log('keydown', e)
         if (e.key === 'Enter') vm.handleQuery()
         if (e.key === 'Escape') vm.handleReset()
       }
@@ -275,7 +277,6 @@ export default {
 
   watch: {
     keyword(newVal, oldVal) {
-      console.log('keyword watcher')
       if (newVal === '' && oldVal !== '') {
         this.updateRecords();
         console.log('keyword watcher > updateRecords')
