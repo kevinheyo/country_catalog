@@ -5,7 +5,7 @@
         <div></div>
       </el-col>
       <el-col :span="8">
-        <el-input placeholder="Keyword" v-model="keyword"></el-input>
+        <el-input ref="keyword" placeholder="Keyword" v-model="keyword" autofocus />
       </el-col>
       <el-col :span="4">
         <el-button type="primary" @click="handleQuery">搜尋</el-button>
@@ -57,19 +57,14 @@
       </el-col>
     </el-row>
 
-
-    <el-dialog title="Tips" v-model="dialog.visible" width="30%">
-      <span>This is a message</span>
-      <p>{{ dialog.visible }}</p>
-      <p>{{ dialog.code }}</p>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="handleCLoseDialog">Cancel</el-button>
-          <el-button type="primary" @click="handleCLoseDialog">Confirm</el-button>
-        </span>
-      </template>
-    </el-dialog>
-
+    <el-row :gutter="20" style="margin: 1.75rem 0">
+      <el-col :span="24">
+        <el-pagination layout="total,prev,pager,next,jumper" background
+                       :total="pager.total" :page-count="pager.pageCount"
+                       :page-size="pager.pageSize" :current-page="pager.currentPage"
+                       @current-change="handleCurrentChange"/>
+      </el-col>
+    </el-row>
 
     <country-dialog />
   </div>
@@ -100,6 +95,13 @@ export default {
     }
 
     api.getAllCountries(getAll);
+
+    vm.registerKeyAction()
+  },
+
+  beforeUnmount() {
+    console.log('beforeUnmount')
+    this.unregisteredKeyAction()
   },
 
   data() {
@@ -123,13 +125,11 @@ export default {
         currentPage: 1
       },
 
+      keyActionCb: () => {},
+
       keyword: '',
       countries: [],
       records: [],
-
-      dialog: {
-        visible: false
-      },
 
       nameList: [],
       fuseOptions: {
@@ -203,6 +203,14 @@ export default {
         vm.$nextTick(() => {
           vm.updateRecords()
         })
+      } else {
+        vm.$refs['keyword'].focus()
+
+        vm.$notify.info({
+          title: '提醒',
+          message: '請輸入關鍵字',
+          duration: 3000
+        });
       }
     },
 
@@ -237,9 +245,6 @@ export default {
       const vm = this
       console.log('handleOpenDialog', code)
 
-      // vm.dialog.visible = true
-      // vm.dialog.code = code
-
       vm.showDialog(code)
     },
 
@@ -247,6 +252,24 @@ export default {
       const vm = this
       vm.dialog.visible = false
     },
+
+    registerKeyAction() {
+      const vm = this;
+      const handler = (e) => {
+        console.log('keydown', e)
+        if (e.key === 'Enter') vm.handleQuery()
+        if (e.key === 'Escape') vm.handleReset()
+      }
+
+      vm.keyActionCb = handler
+      window.addEventListener('keydown', handler)
+    },
+
+    unregisteredKeyAction() {
+      window.removeEventListener(this.keyActionCb)
+    },
+
+
     ...mapMutations(['showDialog'])
   },
 
